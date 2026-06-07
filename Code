@@ -1,0 +1,183 @@
+CREATE DATABASE LaundryShopDB;
+
+USE LaundryShopDB;
+
+CREATE TABLE Customer (
+    CustomerID INT AUTO_INCREMENT PRIMARY KEY,
+    CustomerName VARCHAR(100) NOT NULL,
+    ContactNo VARCHAR(20)
+);
+
+CREATE TABLE Laundry (
+    LaundryID INT AUTO_INCREMENT PRIMARY KEY,
+    CustomerID INT,
+    Weight DECIMAL(5,2),
+    RatePerKilo DECIMAL(5,2),
+    Charge DECIMAL(10,2),
+    DateReceived DATE,
+    DateReady DATE,
+    Status VARCHAR(20),
+
+    FOREIGN KEY (CustomerID)
+    REFERENCES Customer(CustomerID)
+);
+
+CREATE TABLE Payments (
+    PaymentID INT AUTO_INCREMENT PRIMARY KEY,
+    LaundryID INT,
+    AmountPaid DECIMAL(10,2),
+    PaymentDate DATE,
+
+    FOREIGN KEY (LaundryID)
+    REFERENCES Laundry(LaundryID)
+);
+
+INSERT INTO Customer(CustomerName, ContactNo)
+VALUES
+('Juan Dela Cruz', '09123456789'),
+('Maria Santos', '09987654321');
+
+SELECT * FROM Customer;
+
+INSERT INTO Laundry
+(CustomerID, Weight, RatePerKilo, Charge,
+DateReceived, Status)
+
+VALUES
+(1, 8, 35, 280, CURDATE(), 'In Process'),
+(2, 5, 35, 175, CURDATE(), 'Ready');
+
+SELECT * FROM Laundry; 
+
+INSERT INTO Payments
+(LaundryID, AmountPaid, PaymentDate)
+
+VALUES
+(2, 175, CURDATE());
+
+SELECT * FROM Payments;
+
+CREATE VIEW ReadyLaundry AS
+
+SELECT
+    LaundryID,
+    CustomerID,
+    Charge,
+    Status
+
+FROM Laundry
+
+WHERE Status = 'Ready';
+
+SELECT * FROM readylaundry;
+DELIMITER $$
+
+CREATE FUNCTION ComputeCharge(
+    pWeight DECIMAL(5,2),
+    pRate DECIMAL(5,2)
+)
+
+RETURNS DECIMAL(10,2)
+
+DETERMINISTIC
+
+BEGIN
+
+    RETURN pWeight * pRate;
+
+END $$
+
+DELIMITER ;
+
+SELECT ComputeCharge(8,35);
+
+DELIMITER $$
+
+
+CREATE PROCEDURE ReceiveLaundry(
+    IN pCustomerID INT,
+    IN pWeight DECIMAL(5,2),
+    IN pRate DECIMAL(5,2),
+    IN pTicketNo VARCHAR(20)
+)
+
+BEGIN
+
+    DECLARE vCharge DECIMAL(10,2);
+
+    SET vCharge = pWeight * pRate;
+
+    INSERT INTO Laundry(
+        CustomerID,
+        ClaimTicketNo,
+        Weight,
+        RatePerKilo,
+        Charge,
+        DateReceived,
+        Status
+    )
+
+    VALUES(
+        pCustomerID,
+        pTicketNo,
+        pWeight,
+        pRate,
+        vCharge,
+        CURDATE(),
+        'In Process'
+    );
+
+END $$
+
+DELIMITER ;
+
+CALL ReceiveLaundry(
+    1,
+    8,
+    35,
+    'CT-1001'
+);
+
+ALTER TABLE Payments
+ADD PaymentType VARCHAR(20);
+
+INSERT INTO Payments(
+    LaundryID,
+    AmountPaid,
+    PaymentDate,
+    PaymentType
+)
+
+VALUES(
+    1,
+    100,
+    CURDATE(),
+    'Advance'
+);
+
+UPDATE Laundry
+SET Status = 'Claimed'
+WHERE LaundryID = 1;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_UnclaimedLaundry
+
+BEFORE UPDATE
+ON Laundry
+
+FOR EACH ROW
+
+BEGIN
+
+    IF OLD.Status = 'Ready'
+       AND DATEDIFF(CURDATE(), OLD.DateReady) > 30
+    THEN
+
+        SET NEW.Status = 'Unclaimed';
+
+    END IF;
+
+END $$
+
+DELIMITER ;
