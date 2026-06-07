@@ -1,13 +1,18 @@
+//Creates a new database named LaundryShopDB that will store all records related to the laundry management system.
 CREATE DATABASE LaundryShopDB;
 
 USE LaundryShopDB;
 
+
+//Creates a table to store customer information such as their name and contact number. Each customer is assigned a unique ID.
 CREATE TABLE Customer (
     CustomerID INT AUTO_INCREMENT PRIMARY KEY,
     CustomerName VARCHAR(100) NOT NULL,
     ContactNo VARCHAR(20)
 );
 
+
+//Creates a table that records laundry transactions, including the customer, weight of clothes, service charge, dates, and current status.
 CREATE TABLE Laundry (
     LaundryID INT AUTO_INCREMENT PRIMARY KEY,
     CustomerID INT,
@@ -22,6 +27,8 @@ CREATE TABLE Laundry (
     REFERENCES Customer(CustomerID)
 );
 
+
+//Creates a table for storing payment records made for laundry services.
 CREATE TABLE Payments (
     PaymentID INT AUTO_INCREMENT PRIMARY KEY,
     LaundryID INT,
@@ -32,6 +39,8 @@ CREATE TABLE Payments (
     REFERENCES Laundry(LaundryID)
 );
 
+
+//Adds sample customers into the Customer table for testing purposes.
 INSERT INTO Customer(CustomerName, ContactNo)
 VALUES
 ('Juan Dela Cruz', '09123456789'),
@@ -39,6 +48,8 @@ VALUES
 
 SELECT * FROM Customer;
 
+
+//Adds sample laundry transactions associated with existing customers.
 INSERT INTO Laundry
 (CustomerID, Weight, RatePerKilo, Charge,
 DateReceived, Status)
@@ -49,6 +60,8 @@ VALUES
 
 SELECT * FROM Laundry; 
 
+
+//Adds a sample payment record for a completed laundry transaction.
 INSERT INTO Payments
 (LaundryID, AmountPaid, PaymentDate)
 
@@ -57,6 +70,8 @@ VALUES
 
 SELECT * FROM Payments;
 
+
+//Creates a virtual table that displays only laundry orders that are ready for pickup.
 CREATE VIEW ReadyLaundry AS
 
 SELECT
@@ -72,6 +87,8 @@ WHERE Status = 'Ready';
 SELECT * FROM readylaundry;
 DELIMITER $$
 
+
+//Creates a reusable function that automatically calculates the laundry charge based on weight and rate per kilogram.
 CREATE FUNCTION ComputeCharge(
     pWeight DECIMAL(5,2),
     pRate DECIMAL(5,2)
@@ -94,6 +111,7 @@ SELECT ComputeCharge(8,35);
 DELIMITER $$
 
 
+//Creates a procedure that simplifies the process of recording a new laundry order and automatically computes the charge.
 CREATE PROCEDURE ReceiveLaundry(
     IN pCustomerID INT,
     IN pWeight DECIMAL(5,2),
@@ -101,12 +119,16 @@ CREATE PROCEDURE ReceiveLaundry(
     IN pTicketNo VARCHAR(20)
 )
 
+
+//Computes the total charge based on weight and rate per kilo.
 BEGIN
 
     DECLARE vCharge DECIMAL(10,2);
 
     SET vCharge = pWeight * pRate;
 
+
+//Saves a new laundry order into the database.
     INSERT INTO Laundry(
         CustomerID,
         ClaimTicketNo,
@@ -131,6 +153,8 @@ END $$
 
 DELIMITER ;
 
+
+//Changes the status of the laundry transaction.
 CALL ReceiveLaundry(
     1,
     8,
@@ -155,14 +179,20 @@ VALUES(
     'Advance'
 );
 
+
+//Provides a unique ticket number for customer claiming.
 UPDATE Laundry
 SET Status = 'Claimed'
 WHERE LaundryID = 1;
 
 DELIMITER $$
 
+
+//Automatically calculates the laundry charge when a new laundry record is added.
 CREATE TRIGGER trg_UnclaimedLaundry
 
+
+//Automatically marks ready laundry as unclaimed after 30 days
 BEFORE UPDATE
 ON Laundry
 
